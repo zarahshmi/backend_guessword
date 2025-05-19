@@ -178,3 +178,43 @@ class GuessLetterAPIView(APIView):
             'game_status': game.status,
             'your_score': request.user.score
         })
+
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from api.models import Game
+
+class PauseGameAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, game_id):
+        game = get_object_or_404(Game, id=game_id)
+
+        if request.user != game.player1 and request.user != game.player2:
+            return Response({'error': 'You are not part of this game'}, status=403)
+
+        if game.status != 'active':
+            return Response({'error': 'Game is not active'}, status=400)
+
+        game.status = 'paused'
+        game.save()
+        return Response({'message': 'Game paused'}, status=200)
+
+
+class ResumeGameAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, game_id):
+        game = get_object_or_404(Game, id=game_id)
+
+        if request.user != game.player1 and request.user != game.player2:
+            return Response({'error': 'You are not part of this game'}, status=403)
+
+        if game.status != 'paused':
+            return Response({'error': 'Game is not paused'}, status=400)
+
+        game.status = 'active'
+        game.save()
+        return Response({'message': 'Game resumed'}, status=200)

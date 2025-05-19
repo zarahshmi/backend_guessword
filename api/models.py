@@ -49,3 +49,11 @@ class Game(models.Model):
 
     def __str__(self):
         return f'Game #{self.pk} - {self.status}'
+
+
+class Guess(models.Model):
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='guesses')
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    letter = models.CharField(max_length=1)
+    correct = models.BooleanField()
+    guessed_at = models.DateTimeField(auto_now_add=True)

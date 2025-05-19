@@ -4,8 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from api.models import Player,Word, Game
+import random
+from rest_framework.permissions import IsAuthenticated
 
-from api.models import Player
 
 
 class RegisterAPIView(APIView):
@@ -40,3 +42,38 @@ class RegisterAPIView(APIView):
                 }
             }, status=201
         )
+
+
+
+class CreateGameAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        difficulty = request.data.get('difficulty')
+
+        if difficulty not in ['easy', 'medium', 'hard']:
+            return Response({'error': 'Invalid difficulty level'}, status=400)
+
+        words = Word.objects.filter(difficulty=difficulty)
+        if not words.exists():
+            return Response({'error': 'No words found for this difficulty'}, status=400)
+
+        word_obj = random.choice(list(words))
+        real_word = word_obj.text.lower()
+        masked_word = '_' * len(real_word)
+
+        game = Game.objects.create(
+            player1=request.user,
+            word=real_word,
+            masked_word=masked_word,
+            difficulty=difficulty,
+            status='waiting',
+            turn=request.user
+        )
+
+        return Response({
+            'game_id': game.id,
+            'word_length': len(real_word),
+            'difficulty': game.difficulty,
+            'status': game.status
+        }, status=201)

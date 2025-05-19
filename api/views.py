@@ -7,7 +7,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from api.models import Player,Word, Game
 import random
 from rest_framework.permissions import IsAuthenticated
-
+from django.utils import timezone
 
 
 class RegisterAPIView(APIView):
@@ -77,3 +77,61 @@ class CreateGameAPIView(APIView):
             'difficulty': game.difficulty,
             'status': game.status
         }, status=201)
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from api.models import Game
+
+class WaitingGamesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        games = Game.objects.filter(
+            status='waiting',
+            player2__isnull=True
+        ).exclude(player1=request.user)
+
+        data = []
+        for game in games:
+            data.append({
+                'game_id': game.id,
+                'player1': game.player1.username,
+                'difficulty': game.difficulty,
+                'created_at': game.created_at,
+            })
+
+        return Response(data)
+
+
+class JoinGameAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            game = Game.objects.filter(status='waiting', player2__isnull=True).first()
+
+            if not game:
+                return Response({'detail': 'No available games to join.'}, status=404)
+
+            if game.player1 == request.user:
+                return Response({'detail': 'You cannot join your own game.'}, status=400)
+
+            game.player2 = request.user
+            game.status = 'active'
+            game.started_at = timezone.now()
+            game.turn = random.choice([game.player1, game.player2])
+            game.save()
+
+            return Response({
+                'detail': 'You joined the game!',
+                'game_id': game.id,
+                'opponent': game.player1.username,
+                'your_turn': game.turn == request.user,
+                'masked_word': game.masked_word,
+                'difficulty': game.difficulty,
+            })
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)

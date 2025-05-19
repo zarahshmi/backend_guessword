@@ -11,6 +11,7 @@ from api.serializers import GameCreateSerializer, WaitingGameSerializer,GameSeri
 from django.shortcuts import get_object_or_404
 
 
+
 class RegisterAPIView(APIView):
     def post(self, request, *args, **kwargs):
         username = request.data.get('username')
@@ -180,11 +181,7 @@ class GuessLetterAPIView(APIView):
         })
 
 
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from api.models import Game
+
 
 class PauseGameAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -203,6 +200,7 @@ class PauseGameAPIView(APIView):
         return Response({'message': 'Game paused'}, status=200)
 
 
+
 class ResumeGameAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -218,3 +216,4 @@ class ResumeGameAPIView(APIView):
         game.status = 'active'
         game.save()
         return Response({'message': 'Game resumed'}, status=200)
+

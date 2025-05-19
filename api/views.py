@@ -104,34 +104,36 @@ class WaitingGamesAPIView(APIView):
 
         return Response(data)
 
+# api/views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from api.models import Game
+from api.serializers import GameSerializer
+
+
 
 class JoinGameAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        try:
-            game = Game.objects.filter(status='waiting', player2__isnull=True).first()
+    def post(self, request, game_id, *args, **kwargs):
+        game = get_object_or_404(Game, id=game_id)
 
-            if not game:
-                return Response({'detail': 'No available games to join.'}, status=404)
+        if game.status != 'waiting':
+            return Response({'error': 'You cannot join this game'}, status=400)
 
-            if game.player1 == request.user:
-                return Response({'detail': 'You cannot join your own game.'}, status=400)
+        if game.player1 == request.user:
+            return Response({'error': 'You cannot join your own game'}, status=400)
 
-            game.player2 = request.user
-            game.status = 'active'
-            game.started_at = timezone.now()
-            game.turn = random.choice([game.player1, game.player2])
-            game.save()
+        if game.player2:
+            return Response({'error': 'Game already has two players'}, status=400)
 
-            return Response({
-                'detail': 'You joined the game!',
-                'game_id': game.id,
-                'opponent': game.player1.username,
-                'your_turn': game.turn == request.user,
-                'masked_word': game.masked_word,
-                'difficulty': game.difficulty,
-            })
+        game.player2 = request.user
+        game.status = 'active'
+        game.started_at = timezone.now()
+        game.save()
 
-        except Exception as e:
-            return Response({'error': str(e)}, status=500)
+        serializer = GameSerializer(game)
+        return Response(serializer.data, status=200)

@@ -6,8 +6,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from api.models import Player,Word, Game
 import random
-from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from api.serializers import GameCreateSerializer, WaitingGameSerializer,GameSerializer,GameListSerializer
+from django.shortcuts import get_object_or_404
 
 
 class RegisterAPIView(APIView):
@@ -47,14 +48,16 @@ class RegisterAPIView(APIView):
 
 class CreateGameAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = GameCreateSerializer
 
     def post(self, request):
-        difficulty = request.data.get('difficulty')
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
 
-        if difficulty not in ['easy', 'medium', 'hard']:
-            return Response({'error': 'Invalid difficulty level'}, status=400)
-
+        difficulty = serializer.validated_data['difficulty']
         words = Word.objects.filter(difficulty=difficulty)
+
         if not words.exists():
             return Response({'error': 'No words found for this difficulty'}, status=400)
 
@@ -79,12 +82,10 @@ class CreateGameAPIView(APIView):
         }, status=201)
 
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from api.models import Game
+
 
 class WaitingGamesAPIView(APIView):
+    serializer_class = WaitingGameSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -93,25 +94,9 @@ class WaitingGamesAPIView(APIView):
             player2__isnull=True
         ).exclude(player1=request.user)
 
-        data = []
-        for game in games:
-            data.append({
-                'game_id': game.id,
-                'player1': game.player1.username,
-                'difficulty': game.difficulty,
-                'created_at': game.created_at,
-            })
+        serializer = self.serializer_class(games, many=True)
+        return Response(serializer.data)
 
-        return Response(data)
-
-# api/views.py
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from api.models import Game
-from api.serializers import GameSerializer
 
 
 

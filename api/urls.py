@@ -7,6 +7,8 @@ urlpatterns = [
     path('register/', RegisterAPIView.as_view()),
     path('login/', TokenObtainPairView.as_view()),
     path('refresh/', TokenRefreshView.as_view()),
+
+
     path('create-game/', CreateGameAPIView.as_view()),
     path('waiting-games/', WaitingGamesAPIView.as_view()),
     path("games/<int:game_id>/join/", JoinGameAPIView.as_view()),

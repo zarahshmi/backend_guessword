@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from api.views import RegisterAPIView, CreateGameAPIView, WaitingGamesAPIView, JoinGameAPIView, GuessLetterAPIView, \
-    PauseGameAPIView, ResumeGameAPIView
+    PauseGameAPIView, ResumeGameAPIView, ProfileAPIView
 
 urlpatterns = [
     path('register/', RegisterAPIView.as_view()),
@@ -16,8 +16,7 @@ urlpatterns = [
     path('games/<int:game_id>/guess/', GuessLetterAPIView.as_view()),
     path('games/<int:game_id>/pause/', PauseGameAPIView.as_view()),
     path('games/<int:game_id>/resume/', ResumeGameAPIView.as_view()),
-
-
+    path('profile/', ProfileAPIView.as_view()),
 
 ]
 

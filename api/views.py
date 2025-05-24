@@ -1,6 +1,6 @@
 from django.db.models import Q
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 
 
 class RegisterAPIView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -119,6 +120,8 @@ class JoinGameAPIView(APIView):
         game.player2 = request.user
         game.status = 'active'
         game.started_at = timezone.now()
+
+        game.turn = random.choice([game.player1, game.player2])
         game.save()
 
         serializer = GameSerializer(game)
@@ -217,3 +220,64 @@ class ResumeGameAPIView(APIView):
         game.save()
         return Response({'message': 'Game resumed'}, status=200)
 
+
+
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Q, F
+from api.models import Game
+
+class ProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        all_games = Game.objects.filter(Q(player1=user) | Q(player2=user)).order_by('-started_at')
+        finished_games = all_games.filter(status='finished')
+
+        total_games = finished_games.count()
+        wins = finished_games.filter(masked_word=F('word'), turn=user).count()
+        losses = total_games - wins
+        win_rate = round((wins / total_games) * 100, 2) if total_games > 0 else 0.0
+
+        def serialize_game(game):
+            opponent = game.player2 if game.player1 == user else game.player1
+            result = None
+            if game.status == 'finished':
+                result = 'win' if game.masked_word == game.word and game.turn == user else 'lose'
+            elif game.status == 'paused':
+                result = 'paused'
+            elif game.status == 'waiting':
+                result = 'waiting'
+
+            return {
+                'id': game.id,
+                'difficulty': game.difficulty,
+                'status': game.status,
+                'word_length': len(game.word),
+                'opponent': opponent.username if opponent else None,
+                'is_opponent_joined': game.player2 is not None,
+                'your_turn': game.turn == user if game.status == 'active' else None,
+                'result': result,
+                'started_at': game.started_at,
+                #'expires_at': game.expires_at
+            }
+
+        created_waiting_games = all_games.filter(player1=user, status='waiting')
+        active_games = all_games.filter(status='active')
+        joined_games = all_games.filter(player2=user)
+
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'score': user.score,
+            'games_played': total_games,
+            'wins': wins,
+            'losses': losses,
+            'win_rate': f"{win_rate}%",
+            'created_waiting_games': [serialize_game(g) for g in created_waiting_games],
+            'active_games': [serialize_game(g) for g in active_games],
+            'joined_games': [serialize_game(g) for g in joined_games],
+        })

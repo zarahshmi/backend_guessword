@@ -3,10 +3,16 @@ from api.models import Game, Player, Word
 from rest_framework import serializers
 
 
-class GameSerializer(ModelSerializer):
+class GameSerializer(serializers.ModelSerializer):
+    player1 = serializers.CharField(source='player1.username')
+    player2 = serializers.CharField(source='player2.username', allow_null=True)
+    current_turn = serializers.CharField(source='turn.username', allow_null=True)
+
     class Meta:
         model = Game
-        fields = ["difficulty"]
+        fields = ['id', 'player1', 'player2', 'word', 'masked_word',
+                  'difficulty', 'status', 'created_at', 'started_at',
+                  'current_turn']
 
 
 class GameCreateSerializer(serializers.Serializer):

@@ -262,3 +262,25 @@ class ProfileAPIView(APIView):
             'joined_games': ProfileGameSerializer(joined_games, many=True, context={'request': request}).data,
             'finished_games': ProfileGameSerializer(finished_games, many=True, context={'request': request}).data,
         })
+
+# views.py
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from api.models import Game
+from api.serializers import GameSerializer
+
+class GameDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, game_id):
+        user = request.user
+        game = get_object_or_404(Game, id=game_id)
+
+        if game.player1 != user and game.player2 != user:
+            return Response({'detail': 'شما به این بازی دسترسی ندارید.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = GameSerializer(game)
+        return Response(serializer.data)
